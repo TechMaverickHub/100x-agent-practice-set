@@ -15,7 +15,7 @@ Requirements:
 
 import os
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any
 from groq import Groq
 from dotenv import load_dotenv
 
@@ -29,8 +29,8 @@ load_dotenv()
 
 TOOLS = {
     "search": {
-        "description": "Search for information about a topic",
-        "function": lambda topic: tavily_search_web(topic)
+        "description": "Search for information about a topic. Use 'query' as the argument name.",
+        "function": lambda query: tavily_search_web(query)
     },
     "calculate": {
         "description": "Calculate a math expression",
