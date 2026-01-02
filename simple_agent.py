@@ -19,6 +19,8 @@ from typing import Dict, Any, List
 from groq import Groq
 from dotenv import load_dotenv
 
+from utils import tavily_search_web
+
 load_dotenv()
 
 # =============================================================================
@@ -28,7 +30,7 @@ load_dotenv()
 TOOLS = {
     "search": {
         "description": "Search for information about a topic",
-        "function": lambda topic: f"Information about {topic}: [Mock search result]"
+        "function": lambda topic: tavily_search_web(topic)
     },
     "calculate": {
         "description": "Calculate a math expression",
