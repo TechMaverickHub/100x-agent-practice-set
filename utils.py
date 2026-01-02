@@ -9,6 +9,8 @@ def tavily_search_web(query: str) -> str:
 
     api_key = os.getenv("TAVILY_API_KEY")
 
+    print(f"Searching web for: {query}")
+
     client = TavilyClient(api_key)
 
     try:

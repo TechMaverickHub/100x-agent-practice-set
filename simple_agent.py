@@ -267,9 +267,11 @@ if __name__ == "__main__":
         exit(1)
     
     agent = SimpleAgent()
+
+    topic_to_search = str(input("Enter a topic to search: "))
     
     # Test with a simple goal
-    answer = agent.run("What is 25 * 4 + 100?")
+    answer = agent.run(topic_to_search)
     
     print(f"\n{'='*60}")
     print(f"FINAL ANSWER: {answer}")
