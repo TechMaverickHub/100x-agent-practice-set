@@ -5,17 +5,16 @@ from tavily import TavilyClient
 
 
 load_dotenv()
-def tavily_search_web(query: str) -> str:
+def tavily_search_web(topic: str) -> str:
 
     api_key = os.getenv("TAVILY_API_KEY")
 
-    print(f"Searching web for: {query}")
 
     client = TavilyClient(api_key)
 
     try:
         response = client.search(
-            query=query,
+            query=topic,
             max_results=3,
             include_content=True
         )
