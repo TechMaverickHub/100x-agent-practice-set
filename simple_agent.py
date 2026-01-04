@@ -19,6 +19,7 @@ from typing import Dict, Any
 from groq import Groq
 from dotenv import load_dotenv
 
+from memory import search_memory, store_memory
 from utils import tavily_search_web
 
 load_dotenv()
@@ -74,6 +75,13 @@ class SimpleAgent:
             # Check if done
             if plan["action"] == "COMPLETE":
                 self._log_phase("✅ COMPLETE", {"answer": plan["answer"]})
+
+                # ✅ STORE MEMORY HERE (FINAL ANSWER)
+                store_memory(
+                    question=context["goal"],
+                    answer=plan["answer"]
+                )
+
                 return plan["answer"]
             
             # ⚡ ACT: Execute the planned action
@@ -94,10 +102,17 @@ class SimpleAgent:
     
     def _sense(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """SENSE: Gather information about current state."""
+
+        retrieved_memories = search_memory(context["goal"])
+        context["memories"] = retrieved_memories
+
         self._log_phase("👁️  SENSE", {
             "iteration": context["iteration"],
             "goal": context["goal"],
-            "previous_actions": context.get("last_action", "None")
+            "previous_actions": context.get("last_action", "None"),
+            "found": len(retrieved_memories),
+            "scores": [m["similarity"] for m in retrieved_memories]
+
         })
         
         # Return enriched context
@@ -151,8 +166,16 @@ Rules:
         )
         
         # Parse response
-        plan = self._parse_json(response.choices[0].message.content)
-        
+        try:
+            plan = self._parse_json(response.choices[0].message.content)
+        except Exception:
+            # Graceful fallback
+            plan = {
+                "action": "COMPLETE",
+                "answer": "Sorry, I couldn't generate a structured plan. Please try again.",
+                "reasoning": "Planner failed to return valid JSON."
+            }
+
         self._log_phase("🧠 PLAN", {
             "action": plan["action"],
             "tool": plan.get("tool", "N/A"),
@@ -207,7 +230,7 @@ Rules:
     
     def _reflect(self, context: Dict[str, Any], observation: Dict[str, Any]) -> str:
         """REFLECT: Evaluate progress toward goal."""
-        
+
         prompt = f"""Goal: {context['goal']}
 
 Action Taken: {observation['action_taken']}
@@ -219,7 +242,7 @@ In 1-2 sentences, reflect on:
 2. What should happen next?
 
 Be brief and actionable."""
-        
+
         response = self.llm.chat.completions.create(
             model=self.model,
             messages=[
@@ -231,7 +254,7 @@ Be brief and actionable."""
         )
         
         reflection = response.choices[0].message.content.strip()
-        
+
         self._log_phase("💭 REFLECT", {"reflection": reflection})
         
         return reflection
@@ -246,12 +269,19 @@ Be brief and actionable."""
     def _parse_json(self, text: str) -> Dict[str, Any]:
         """Parse JSON from LLM response."""
         # Remove markdown code blocks if present
-        if "```json" in text:
-            text = text.split("```json")[1].split("```")[0]
-        elif "```" in text:
-            text = text.split("```")[1].split("```")[0]
-        
-        return json.loads(text.strip())
+        try:
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0]
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0]
+
+            return json.loads(text.strip())
+        except json.JSONDecodeError:
+            self._log_phase("❌ PARSE ERROR", {
+                "raw_output": text[:500]
+            })
+            raise
+
 
 # =============================================================================
 # USAGE
