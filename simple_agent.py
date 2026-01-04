@@ -12,7 +12,7 @@ Usage:
 Requirements:
     pip install groq python-dotenv
 """
-
+from datetime import datetime, timezone
 import os
 import json
 from typing import Dict, Any
@@ -51,7 +51,9 @@ class SimpleAgent:
         # Using GPT OSS 120B model via Groq Cloud
         self.model = "openai/gpt-oss-120b"
         self.memory = []  # Conversation history
-        
+        self.logs = []
+        self.log_file = None
+
     def run(self, goal: str, max_iterations: int = 5) -> str:
         """Main agent loop with SPOAR pattern."""
         
@@ -61,7 +63,12 @@ class SimpleAgent:
         
         # Initialize context
         context = {"goal": goal, "iteration": 0}
-        
+
+        if "earlier" in goal.lower() or "before" in goal.lower():
+            self.log_file = "logs/memory_test.json"
+        else:
+            self.log_file = "logs/basic_test.json"
+
         for iteration in range(1, max_iterations + 1):
             context["iteration"] = iteration
             print(f"\n--- ITERATION {iteration} ---\n")
@@ -81,6 +88,12 @@ class SimpleAgent:
                     question=context["goal"],
                     answer=plan["answer"]
                 )
+
+                # ✅ WRITE LOG FILE HERE
+                os.makedirs("logs", exist_ok=True)
+
+                with open(self.log_file, "w") as f:
+                    json.dump(self.logs, f, indent=2)
 
                 return plan["answer"]
             
@@ -265,7 +278,19 @@ Be brief and actionable."""
         for key, value in data.items():
             print(f"  {key}: {value}")
         print()
-    
+
+        entry = {
+            "phase": phase,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": data
+        }
+
+        print(f"\n{phase}")
+        for k, v in data.items():
+            print(f"  {k}: {v}")
+
+        self.logs.append(entry)
+
     def _parse_json(self, text: str) -> Dict[str, Any]:
         """Parse JSON from LLM response."""
         # Remove markdown code blocks if present
